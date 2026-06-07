@@ -1,0 +1,67 @@
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #2c3e50, #34495e);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  z-index: 10;
+}
+
+.topbar-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.topbar-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(255,255,255,0.15);
+  color: white;
+  white-space: nowrap;
+}
+
+.topbar-btn:hover:not(:disabled) {
+  background: rgba(255,255,255,0.25);
+}
+
+.topbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.topbar-btn.primary {
+  background: #3498db;
+}
+
+.topbar-btn.primary:hover {
+  background: #2980b9;
+}
+
+.topbar-btn.danger {
+  background: #e74c3c;
+}
+
+.topbar-btn.danger:hover:not(:disabled) {
+  background: #c0392b;
+}
