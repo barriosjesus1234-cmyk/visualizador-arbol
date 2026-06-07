@@ -15,8 +15,6 @@ interface TreeVisualizationProps {
   onCollapseAll: () => void;
 }
 
-type D3Node = d3.HierarchyNode<TreeNode> & { _children?: D3Node[] };
-
 export default function TreeVisualization({
   tree,
   selectedNode,
@@ -67,14 +65,14 @@ export default function TreeVisualization({
       .on('zoom', (evt) => { g.attr('transform', evt.transform); });
     svg.call(zoom);
 
-    // ── 1. Construir jerarquía COMPLETA (todos los nodos) ──
-    const root: D3Node = d3.hierarchy(rootData, (d) => d.children) as D3Node;
+    // ── 1. Construir jerarquía ──
+    // Usamos any para evitar conflictos de tipos entre d3 versions
+    const root: any = d3.hierarchy(rootData, (d: any) => d.children);
 
-    // ── 2. Ocultar hijos de nodos colapsados (patrón _children) ──
-    function applyExpandState(node: D3Node) {
+    // ── 2. Ocultar hijos de nodos colapsados ──
+    function applyExpandState(node: any) {
       if (node.data.id === '__root__') {
-        // La raíz virtual siempre expandida
-        node.children = node.children || null;
+        // Raíz virtual siempre expandida
       } else if (!expandedNodes.has(node.data.id) && node.children && node.children.length > 0) {
         node._children = node.children;
         node.children = undefined;
@@ -88,12 +86,11 @@ export default function TreeVisualization({
     applyExpandState(root);
 
     // ── 3. Layout de árbol ──
-    const treeLayout = d3.tree<D3Node>()
+    const treeLayout = d3.tree<any>()
       .size([innerHeight, innerWidth])
-      .nodeSize([22, 340])       // altura fija por nodo, separación horizontal entre niveles
+      .nodeSize([22, 340])
       .separation((a, b) => {
-        // Separación entre hermanos: escala con el tamaño de las subramas
-        function leafCount(n: D3Node): number {
+        function leafCount(n: any): number {
           if (!n.children || n.children.length === 0) return 1;
           let sum = 0;
           for (const c of n.children) sum += leafCount(c);
@@ -107,16 +104,8 @@ export default function TreeVisualization({
 
     treeLayout(root);
 
-    // ── Ajustar límites del svg si es necesario ──
-    let maxX = 0, maxY = 0;
-    root.each((d) => {
-      if (d.x > maxX) maxX = d.x;
-      if (d.y > maxY) maxY = d.y;
-    });
-    // No forzamos tamaño fijo; el zoom maneja el desplazamiento
-
     // ── Color por tipo ──
-    function nodeColor(d: D3Node): string {
+    function nodeColor(d: any): string {
       if (d.data.isRoot) return '#95a5a6';
       if (d.data.isOrphan) return '#e74c3c';
       if (d.data.isSuffixChild) return '#f39c12';
@@ -124,14 +113,14 @@ export default function TreeVisualization({
       return '#3498db';
     }
 
-    function nodeRadius(d: D3Node): number {
+    function nodeRadius(d: any): number {
       if (d.data.isRoot) return 8;
-      if ((d.children && d.children.length > 0) || (d._children && d._children.length > 0)) return 6;
+      if (!!(d.children?.length) || !!(d._children?.length)) return 6;
       return 4;
     }
 
-    const hasChildren = (d: D3Node) =>
-      (d.children && d.children.length > 0) || (d._children && d._children.length > 0);
+    const hasChildren = (d: any): boolean =>
+      !!(d.children?.length) || !!(d._children?.length);
 
     // ── 4. Enlaces ──
     g.append('g')
@@ -149,14 +138,15 @@ export default function TreeVisualization({
       .attr('stroke-opacity', 0.45);
 
     // ── 5. Nodos ──
+    const allNodes = root.descendants();
     const nodeG = g.append('g')
       .selectAll('g')
-      .data(root.descendants())
+      .data(allNodes)
       .enter()
       .append('g')
-      .attr('transform', (d) => `translate(${d.y},${d.x})`)
+      .attr('transform', (d: any) => `translate(${d.y ?? 0},${d.x ?? 0})`)
       .attr('cursor', 'pointer')
-      .on('click', (_evt, d) => {
+      .on('click', (_evt: any, d: any) => {
         _evt.stopPropagation();
         onSelectNode(d.data);
       });
@@ -165,15 +155,15 @@ export default function TreeVisualization({
     nodeG.append('circle')
       .attr('r', nodeRadius)
       .attr('fill', nodeColor)
-      .attr('stroke', (d) => {
+      .attr('stroke', (d: any) => {
         if (d.data.id === selectedNode?.id) return '#2c3e50';
         if (d.data.isOrphan) return '#c0392b';
         return 'none';
       })
-      .attr('stroke-width', (d) => d.data.id === selectedNode?.id ? 2.5 : 0);
+      .attr('stroke-width', (d: any) => d.data.id === selectedNode?.id ? 2.5 : 0);
 
     // Botón expandir / contraer
-    nodeG.filter((d) => hasChildren(d))
+    nodeG.filter((d: any) => hasChildren(d))
       .append('rect')
       .attr('x', -22)
       .attr('y', -7)
@@ -184,12 +174,12 @@ export default function TreeVisualization({
       .attr('stroke', '#aaa')
       .attr('stroke-width', 1)
       .attr('cursor', 'pointer')
-      .on('click', (evt, d) => {
+      .on('click', (evt: any, d: any) => {
         evt.stopPropagation();
         onToggleExpand(d.data.id);
       });
 
-    nodeG.filter((d) => hasChildren(d))
+    nodeG.filter((d: any) => hasChildren(d))
       .append('text')
       .attr('x', -15)
       .attr('y', 4)
@@ -199,7 +189,7 @@ export default function TreeVisualization({
       .attr('text-anchor', 'middle')
       .attr('cursor', 'pointer')
       .style('pointer-events', 'none')
-      .text((d) => d.children ? '−' : '+');
+      .text((d: any) => d.children ? '−' : '+');
 
     // Etiqueta
     nodeG.append('text')
@@ -207,13 +197,13 @@ export default function TreeVisualization({
       .attr('dy', 4)
       .attr('font-size', '11px')
       .attr('font-family', 'monospace')
-      .attr('fill', (d) => {
+      .attr('fill', (d: any) => {
         if (d.data.isRoot) return '#7f8c8d';
         if (d.data.isOrphan) return '#e74c3c';
         return '#2c3e50';
       })
       .style('pointer-events', 'none')
-      .text((d) => {
+      .text((d: any) => {
         if (d.data.isRoot) return d.data.code;
         return `${d.data.code} — ${d.data.description}`;
       });
@@ -221,7 +211,7 @@ export default function TreeVisualization({
     // ── 6. Resaltar búsqueda ──
     if (searchTerm) {
       const lowerTerm = searchTerm.toLowerCase();
-      nodeG.filter((d) =>
+      nodeG.filter((d: any) =>
         d.data.code.toLowerCase().includes(lowerTerm) ||
         d.data.description.toLowerCase().includes(lowerTerm)
       )
@@ -232,8 +222,8 @@ export default function TreeVisualization({
     }
 
     // ── 7. Centrar vista inicial ──
-    const centerX = innerWidth / 2 - root.y;
-    const centerY = innerHeight / 2 - root.x;
+    const centerX = innerWidth / 2 - (root.y ?? 0);
+    const centerY = innerHeight / 2 - (root.x ?? 0);
     svg.transition().duration(500).call(
       zoom.transform,
       d3.zoomIdentity.translate(centerX, centerY).scale(0.8)

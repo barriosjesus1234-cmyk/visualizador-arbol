@@ -317,7 +317,7 @@ export function getBreadcrumb(
   let current = allNodes.get(nodeId);
   while (current) {
     breadcrumb.unshift(current);
-    current = current.parentId ? allNodes.get(current.parentId) ?? null : null;
+    current = current.parentId ? (allNodes.get(current.parentId) ?? undefined) : undefined;
   }
   return breadcrumb;
 }
