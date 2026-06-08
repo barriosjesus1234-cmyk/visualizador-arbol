@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   normalizeRows,
   countHyphens,
@@ -188,25 +188,63 @@ describe('treeBuilder', () => {
   });
 });
 
-describe('logica de reduccion por 2 caracteres', () => {
-  it('CB-C010102 debe reducirse correctamente buscando CB-C0101 y luego CB-C01', () => {
+describe('logica de prefijo más largo (longest prefix)', () => {
+  it('CB-C010102 debe encontrar padre CB-C0101 como prefijo más largo', () => {
     const codeSet = new Set(['CB-C01', 'CB-C0101', 'CB-C010102']);
     const parent = findParentCode('CB-C010102', codeSet);
     expect(parent).toBe('CB-C0101');
   });
 
-  it('codigo con un guion debe reducir lado derecho en bloques de 2', () => {
+  it('códigos con un guion deben encontrar padre por prefijo más largo', () => {
     const codeSet = new Set([
       'CB-C',
       'CB-C01',
       'CB-C0101',
       'CB-C010102',
     ]);
-    // CB-C010102 -> quitar 2 chars -> CB-C0101 (existe)
     expect(findParentCode('CB-C010102', codeSet)).toBe('CB-C0101');
-    // CB-C0101 -> quitar 2 chars -> CB-C01 (existe)
     expect(findParentCode('CB-C0101', codeSet)).toBe('CB-C01');
-    // CB-C01 -> quitar 2 chars -> CB-C (existe)
     expect(findParentCode('CB-C01', codeSet)).toBe('CB-C');
+  });
+
+  it('CB-C0111-2LNC10CL107 debe ser hijo de CB-C0111-2LNC (prefijo más largo)', () => {
+    const codeSet = new Set([
+      'CB-C0111',
+      'CB-C0111-2LNC',
+      'CB-C0111-2LNC10CL107',
+      'CB-C0111-2LNC10CU001',
+    ]);
+    // El padre debe ser CB-C0111-2LNC, NO CB-C0111
+    expect(findParentCode('CB-C0111-2LNC10CL107', codeSet)).toBe('CB-C0111-2LNC');
+    expect(findParentCode('CB-C0111-2LNC10CU001', codeSet)).toBe('CB-C0111-2LNC');
+  });
+
+  it('CB-C0111-2LNC debe ser hijo de CB-C0111', () => {
+    const codeSet = new Set([
+      'CB-C0111',
+      'CB-C0111-2LNC',
+    ]);
+    expect(findParentCode('CB-C0111-2LNC', codeSet)).toBe('CB-C0111');
+  });
+
+  it('CB-C0102-3LNX11AP001KP1 debe ser hijo de CB-C0102-3LNX (no de CB-C0102)', () => {
+    const codeSet = new Set([
+      'CB-C0102',
+      'CB-C0102-3LNX',
+      'CB-C0102-3LNX11AP001KP1',
+    ]);
+    // El prefijo más largo es CB-C0102-3LNX, no CB-C0102
+    expect(findParentCode('CB-C0102-3LNX11AP001KP1', codeSet)).toBe('CB-C0102-3LNX');
+  });
+
+  it('debe preferir el prefijo más largo cuando hay múltiples opciones', () => {
+    const codeSet = new Set([
+      'CB',
+      'CB-C01',
+      'CB-C0101',
+      'CB-C010102',
+    ]);
+    // CB-C010102 debe encontrar CB-C0101 como padre (el más largo), no CB-C01 ni CB
+    expect(findParentCode('CB-C010102', codeSet)).toBe('CB-C0101');
   });
 });

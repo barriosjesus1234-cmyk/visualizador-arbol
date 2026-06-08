@@ -30,6 +30,12 @@ export function countHyphens(code: string): number {
 
 /**
  * Determina el código padre según las reglas del negocio.
+ *
+ * Regla 1 (sufijo): Si el código tiene >= 2 guiones, primero intenta
+ *   quitar los últimos 3 caracteres (hijos KP1, M01, etc.).
+ * Regla 2 (prefijo más largo): Busca el código existente más largo
+ *   que sea prefijo del código actual. Los hijos tienen el código
+ *   del padre más caracteres adicionales.
  */
 export function findParentCode(
   code: string,
@@ -37,57 +43,43 @@ export function findParentCode(
 ): string | null {
   const hyphens = countHyphens(code);
 
+  // Regla 1: Sufijo de 3 caracteres (ej: ...KP1, ...M01)
   if (hyphens >= 2) {
-    // Regla 2: Si tiene dos guiones, primero revisar si existe un padre quitando los últimos tres caracteres
     const suffixParent = code.slice(0, -3);
     if (codeSet.has(suffixParent)) {
       return suffixParent;
     }
-    // Regla 3: Si no aplica regla 2, padre es todo antes del segundo guión
-    const secondHyphenIndex = code.indexOf('-', code.indexOf('-') + 1);
-    if (secondHyphenIndex !== -1) {
-      const parentBySecondHyphen = code.substring(0, secondHyphenIndex);
-      if (codeSet.has(parentBySecondHyphen)) {
-        return parentBySecondHyphen;
-      }
-      // Si el padre directo no existe, intentar con reducción de 2 caracteres
-      return reduceByTwoChars(parentBySecondHyphen, codeSet);
-    }
   }
 
-  if (hyphens === 1) {
-    // Regla 4: Reducir lado derecho en bloques de 2 caracteres
-    return reduceByTwoChars(code, codeSet);
-  }
-
-  return null;
+  // Regla 2: Buscar el prefijo más largo que exista en el conjunto
+  return findLongestPrefixParent(code, codeSet);
 }
 
 /**
- * Reduce el lado derecho del código en bloques de 2 caracteres buscando padre existente.
+ * Busca el código existente más largo que sea prefijo del código dado.
+ * Elimina caracteres del final uno a uno hasta encontrar un padre
+ * o llegar al prefijo base (antes del primer guión).
  */
-function reduceByTwoChars(code: string, codeSet: Set<string>): string | null {
-  const hyphenIndex = code.indexOf('-');
-  if (hyphenIndex === -1) return null;
+function findLongestPrefixParent(
+  code: string,
+  codeSet: Set<string>
+): string | null {
+  const firstHyphenIndex = code.indexOf('-');
+  if (firstHyphenIndex === -1) return null;
 
-  const left = code.substring(0, hyphenIndex + 1);
-  let right = code.substring(hyphenIndex + 1);
-
-  // Si el código original está en el set, tratamos de encontrar su padre
-  // quitando bloques de 2 caracteres del lado derecho
-  while (right.length > 0) {
-    right = right.slice(0, -2);
-    const candidate = left + right;
-    if (candidate === left.substring(0, left.length - 1)) continue; // solo el prefijo con guión
+  // Buscar desde el prefijo más largo posible (quitando 1 carácter)
+  // hasta llegar al prefijo base (parte antes del primer guión)
+  // Ejemplo: "CB-C0111-2LNC10CL107"
+  //   -> "CB-C0111-2LNC10CL10" (no), ..., "CB-C0111-2LNC" (¡sí!)
+  for (let i = code.length - 1; i > firstHyphenIndex; i--) {
+    const candidate = code.substring(0, i);
     if (codeSet.has(candidate)) {
       return candidate;
     }
-    // Si el candidato solo tiene el prefijo (ej: "CB-"), no seguir reduciendo
-    if (right.length <= 2) break;
   }
 
-  // Último intento: solo el prefijo (sin último carácter si termina en guión)
-  const justPrefix = code.substring(0, hyphenIndex);
+  // Último intento: solo el prefijo antes del primer guión (ej: "CB")
+  const justPrefix = code.substring(0, firstHyphenIndex);
   if (codeSet.has(justPrefix)) {
     return justPrefix;
   }
@@ -317,7 +309,7 @@ export function getBreadcrumb(
   let current = allNodes.get(nodeId);
   while (current) {
     breadcrumb.unshift(current);
-    current = current.parentId ? allNodes.get(current.parentId) ?? null : null;
+    current = current.parentId ? (allNodes.get(current.parentId) ?? undefined) : undefined;
   }
   return breadcrumb;
 }

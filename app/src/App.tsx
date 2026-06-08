@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import type { TreeNode, TreeStats, Warning } from './core/types';
 import { parseExcelFile } from './core/parser';
-import { buildTree, normalizeRows, exportToJSON, searchTree } from './core/treeBuilder';
+import { buildTree, normalizeRows, exportToJSON } from './core/treeBuilder';
 import TopBar from './components/TopBar';
 import LeftPanel from './components/LeftPanel';
 import RightPanel from './components/RightPanel';
